@@ -7,7 +7,7 @@
 </head>
 <body>
   <h3>reCAPTCHA v3 Token Generator</h3>
-  <p>This token will be stored in JS (not the DOM) for Puppeteer to access.</p>
+  <p>This token is stored in JS (not DOM) to avoid Grammarly/extension interference.</p>
   <textarea id="token" data-gramm_editor="false" style="width:100%; height:150px;"></textarea>
 
   <script>
@@ -20,7 +20,7 @@
           .then(token => {
             window.recaptchaToken = token;
             window.tokenReady = true;
-            document.getElementById('token').value = token; // For manual view
+            document.getElementById('token').value = token;
             console.log('Token:', token);
           })
           .catch(err => {
