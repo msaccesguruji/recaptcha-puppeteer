@@ -7,22 +7,24 @@
 </head>
 <body>
   <h3>reCAPTCHA v3 Token Generator</h3>
-  <p>This page is used by Puppeteer to generate a reCAPTCHA token.</p>
+  <p>Token will appear in JS (not textarea) for Puppeteer</p>
   <textarea id="token" style="width:100%; height:150px;"></textarea>
 
   <script>
     window.tokenReady = false;
+    window.recaptchaToken = ''; // store here for Puppeteer
 
     async function generateToken() {
       grecaptcha.ready(() => {
         grecaptcha.execute('6LcFFhweAAAAAKVAzmxaLI8IwgXIWydvrEvmE2Qm', { action: 'submit' })
           .then(token => {
+            window.recaptchaToken = token;
+            window.tokenReady = true;
             document.getElementById('token').value = token;
             console.log('Token:', token);
-            window.tokenReady = true;
           })
-          .catch(error => {
-            document.getElementById('token').value = 'Error: ' + error.message;
+          .catch(err => {
+            document.getElementById('token').value = 'Error: ' + err.message;
             window.tokenReady = false;
           });
       });
