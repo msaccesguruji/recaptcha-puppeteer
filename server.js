@@ -11,6 +11,8 @@ app.post('/get-recaptcha-token', async (req, res) => {
   const action = req.body.action || 'submit';
   const pageUrl = `file://${path.join(__dirname, 'public', 'index.html')}`;
 
+  console.log('🔐 Launching Puppeteer...');
+
   try {
     const browser = await puppeteer.launch({
       headless: 'new',
@@ -19,16 +21,22 @@ app.post('/get-recaptcha-token', async (req, res) => {
     });
 
     const page = await browser.newPage();
+
+    // Optional: help reduce detection (but no stealth plugin used)
+    await page.setUserAgent('Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/122 Safari/537.36');
+    await page.setExtraHTTPHeaders({ 'Accept-Language': 'en-US,en;q=0.9' });
+
+    console.log('📄 Navigating to:', pageUrl);
     await page.goto(pageUrl, { waitUntil: 'networkidle2' });
 
-    // Wait for tokenReady to be true (from JS)
+    console.log('⏳ Waiting for tokenReady...');
     await page.waitForFunction(() => window.tokenReady === true, {
-      timeout: 10000,
+      timeout: 15000,
       polling: 300,
     });
 
-    // Read the final token directly from JS variable
     const token = await page.evaluate(() => window.recaptchaToken);
+    console.log('✅ Extracted token:', token);
 
     await browser.close();
     res.json({ success: true, token });
