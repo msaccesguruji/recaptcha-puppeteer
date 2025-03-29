@@ -14,8 +14,10 @@ app.post('/get-recaptcha-token', async (req, res) => {
   try {
     const browser = await puppeteer.launch({
       headless: 'new',
-      args: ['--no-sandbox', '--disable-setuid-sandbox']
+      args: ['--no-sandbox', '--disable-setuid-sandbox'],
+      executablePath: process.env.CHROME_EXECUTABLE_PATH || undefined,
     });
+
 
     const page = await browser.newPage();
 
