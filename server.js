@@ -11,6 +11,11 @@ app.post('/get-recaptcha-token', async (req, res) => {
   const action = req.body.action || 'submit';
   const pageUrl = `file://${path.join(__dirname, 'public', 'index.html')}`;
 
+  console.log('🔐 Starting reCAPTCHA token generation...');
+  console.log('➡️ Site key:', siteKey);
+  console.log('➡️ Action:', action);
+  console.log('➡️ Loading HTML page:', pageUrl);
+
   try {
     const browser = await puppeteer.launch({
       headless: 'new',
@@ -20,8 +25,10 @@ app.post('/get-recaptcha-token', async (req, res) => {
 
     const page = await browser.newPage();
     await page.goto(pageUrl, { waitUntil: 'networkidle2' });
+    console.log('✅ Page loaded. Waiting briefly before checking token...');
 
-    // Wait until the token appears in the textarea#token
+    await page.waitForTimeout(1000); // Add 1-second delay for safety
+
     const token = await page.evaluate(() => {
       return new Promise((resolve, reject) => {
         const checkInterval = setInterval(() => {
@@ -32,7 +39,6 @@ app.post('/get-recaptcha-token', async (req, res) => {
           }
         }, 300);
 
-        // Fallback in case something goes wrong
         setTimeout(() => {
           clearInterval(checkInterval);
           reject(new Error('Timed out waiting for token in DOM'));
@@ -40,13 +46,18 @@ app.post('/get-recaptcha-token', async (req, res) => {
       });
     });
 
+    console.log('✅ Token successfully retrieved from DOM:');
+    console.log(token);
+
     await browser.close();
+    console.log('🧹 Browser closed. Sending token back to client.');
+
     res.json({ success: true, token });
   } catch (err) {
-    console.error('Error generating token:', err);
+    console.error('❌ Error generating token:', err.message);
     res.status(500).json({ success: false, error: err.message });
   }
 });
 
 const PORT = process.env.PORT || 8080;
-app.listen(PORT, () => console.log(`✅ Server running at http://localhost:${PORT}`));
+app.listen(PORT, () => console.log(`🚀 Server running at http://localhost:${PORT}`));
