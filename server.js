@@ -3,7 +3,7 @@ const puppeteer = require('puppeteer');
 const path = require('path');
 
 const app = express();
-app.use(express.static('public')); // Serve index.html
+app.use(express.static('public'));
 app.use(express.json());
 
 app.post('/get-recaptcha-token', async (req, res) => {
@@ -18,24 +18,29 @@ app.post('/get-recaptcha-token', async (req, res) => {
       executablePath: process.env.CHROME_EXECUTABLE_PATH || undefined,
     });
 
-
     const page = await browser.newPage();
-
     await page.goto(pageUrl, { waitUntil: 'networkidle2' });
 
-    // Pass siteKey and action to page context
-    const token = await page.evaluate(async (siteKey, action) => {
+    // Wait until the token appears in the textarea#token
+    const token = await page.evaluate(() => {
       return new Promise((resolve, reject) => {
-        grecaptcha.ready(() => {
-          grecaptcha.execute(siteKey, { action })
-            .then(resolve)
-            .catch(reject);
-        });
+        const checkInterval = setInterval(() => {
+          const textarea = document.querySelector('#token');
+          if (textarea && textarea.value && !textarea.value.startsWith('Error')) {
+            clearInterval(checkInterval);
+            resolve(textarea.value.trim());
+          }
+        }, 300);
+
+        // Fallback in case something goes wrong
+        setTimeout(() => {
+          clearInterval(checkInterval);
+          reject(new Error('Timed out waiting for token in DOM'));
+        }, 10000);
       });
-    }, siteKey, action);
+    });
 
     await browser.close();
-
     res.json({ success: true, token });
   } catch (err) {
     console.error('Error generating token:', err);
