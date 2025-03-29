@@ -11,10 +11,9 @@ app.post('/get-recaptcha-token', async (req, res) => {
   const action = req.body.action || 'submit';
   const pageUrl = `file://${path.join(__dirname, 'public', 'index.html')}`;
 
-  console.log('🔐 Starting reCAPTCHA token generation...');
-  console.log('➡️ Site key:', siteKey);
+  console.log('🔐 Generating reCAPTCHA token...');
+  console.log('➡️ SiteKey:', siteKey);
   console.log('➡️ Action:', action);
-  console.log('➡️ Loading HTML page:', pageUrl);
 
   try {
     const browser = await puppeteer.launch({
@@ -25,36 +24,27 @@ app.post('/get-recaptcha-token', async (req, res) => {
 
     const page = await browser.newPage();
     await page.goto(pageUrl, { waitUntil: 'networkidle2' });
-    console.log('✅ Page loaded. Waiting briefly before checking token...');
 
-    await page.waitForTimeout(1000); // Add 1-second delay for safety
+    console.log('📄 Page loaded. Waiting for tokenReady...');
 
-    const token = await page.evaluate(() => {
-      return new Promise((resolve, reject) => {
-        const checkInterval = setInterval(() => {
-          const textarea = document.querySelector('#token');
-          if (textarea && textarea.value && !textarea.value.startsWith('Error')) {
-            clearInterval(checkInterval);
-            resolve(textarea.value.trim());
-          }
-        }, 300);
-
-        setTimeout(() => {
-          clearInterval(checkInterval);
-          reject(new Error('Timed out waiting for token in DOM'));
-        }, 10000);
-      });
+    // Wait until window.tokenReady is true
+    await page.waitForFunction(() => window.tokenReady === true, {
+      timeout: 10000,
+      polling: 300,
     });
 
-    console.log('✅ Token successfully retrieved from DOM:');
-    console.log(token);
+    // Now get the final value from the DOM
+    const token = await page.evaluate(() => {
+      const textarea = document.querySelector('#token');
+      return textarea?.value || '';
+    });
+
+    console.log('✅ Token from DOM:', token);
 
     await browser.close();
-    console.log('🧹 Browser closed. Sending token back to client.');
-
     res.json({ success: true, token });
   } catch (err) {
-    console.error('❌ Error generating token:', err.message);
+    console.error('❌ Error:', err.message);
     res.status(500).json({ success: false, error: err.message });
   }
 });
